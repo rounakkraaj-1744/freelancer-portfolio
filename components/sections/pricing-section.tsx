@@ -1,5 +1,7 @@
 "use client"
 
+import type React from "react"
+
 import { motion } from "framer-motion"
 import { useInView } from "framer-motion"
 import { useRef, useState, useEffect } from "react"
@@ -73,6 +75,14 @@ export default function PricingSection() {
   const isInView = useInView(ref, { once: true, margin: "-100px" })
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+
+  // Touch/Swipe handling
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
+
+  // Minimum swipe distance (in px)
+  const minSwipeDistance = 50
 
   useEffect(() => {
     const checkMobile = () => {
@@ -102,6 +112,69 @@ export default function PricingSection() {
 
   const goToSlide = (index: number) => {
     setCurrentSlide(index)
+  }
+
+  // Touch event handlers
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null) // Reset touchEnd
+    setTouchStart(e.targetTouches[0].clientX)
+    setIsDragging(true)
+  }
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) {
+      setIsDragging(false)
+      return
+    }
+
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      nextSlide()
+    } else if (isRightSwipe) {
+      prevSlide()
+    }
+
+    setIsDragging(false)
+  }
+
+  // Mouse event handlers for desktop testing
+  const onMouseDown = (e: React.MouseEvent) => {
+    if (!isMobile) return
+    setTouchEnd(null)
+    setTouchStart(e.clientX)
+    setIsDragging(true)
+  }
+
+  const onMouseMove = (e: React.MouseEvent) => {
+    if (!isMobile || !isDragging) return
+    setTouchEnd(e.clientX)
+  }
+
+  const onMouseUp = () => {
+    if (!isMobile) return
+    if (!touchStart || !touchEnd) {
+      setIsDragging(false)
+      return
+    }
+
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
+
+    if (isLeftSwipe) {
+      nextSlide()
+    } else if (isRightSwipe) {
+      prevSlide()
+    }
+
+    setIsDragging(false)
   }
 
   return (
@@ -139,12 +212,12 @@ export default function PricingSection() {
               transition={{ duration: 0.8, delay: 0.1 * index }}
               className={`relative p-8 bg-background/50 backdrop-blur-sm rounded-2xl border-2 transition-all duration-300 hover:shadow-xl flex flex-col ${
                 plan.popular
-                  ? "border-primary shadow-lg scale-105 hover:scale-110"
+                  ? "border-primary shadow-lg scale-105 hover:scale-110 mt-6"
                   : "border-border hover:border-primary/50"
               }`}
             >
               {plan.popular && (
-                <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-10">
                   <div className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium flex items-center gap-1">
                     <Star className="w-4 h-4" />
                     Most Popular
@@ -176,11 +249,33 @@ export default function PricingSection() {
             <ChevronRight className="w-5 h-5" />
           </button>
 
-          {/* Carousel Container */}
-          <div className="overflow-hidden rounded-2xl">
+          {/* Carousel Container with Touch Support */}
+          <div
+            className="overflow-hidden rounded-2xl cursor-grab active:cursor-grabbing select-none"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+            onMouseLeave={onMouseUp}
+          >
             <motion.div
-              className="flex transition-transform duration-300 ease-in-out"
+              className={`flex transition-transform duration-300 ease-out ${isDragging ? "transition-none" : ""}`}
               style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+              drag={isMobile ? "x" : false}
+              dragConstraints={{ left: 0, right: 0 }}
+              dragElastic={0.1}
+              onDragEnd={(_, info) => {
+                if (!isMobile) return
+
+                const threshold = 50
+                if (info.offset.x > threshold) {
+                  prevSlide()
+                } else if (info.offset.x < -threshold) {
+                  nextSlide()
+                }
+              }}
             >
               {pricingPlans.map((plan, index) => (
                 <motion.div
@@ -189,11 +284,11 @@ export default function PricingSection() {
                   animate={isInView ? { opacity: 1, y: 0 } : {}}
                   transition={{ duration: 0.8, delay: 0.1 * index }}
                   className={`relative p-6 bg-background/50 backdrop-blur-sm border-2 transition-all duration-300 flex flex-col min-w-full ${
-                    plan.popular ? "border-primary shadow-lg" : "border-border"
+                    plan.popular ? "border-primary shadow-lg mt-6" : "border-border"
                   }`}
                 >
                   {plan.popular && (
-                    <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+                    <div className="absolute -top-6 left-1/2 transform -translate-x-1/2 z-10">
                       <div className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-medium flex items-center gap-1">
                         <Star className="w-4 h-4" />
                         Most Popular
@@ -222,7 +317,15 @@ export default function PricingSection() {
           </div>
 
           {/* Swipe Hint */}
-          <p className="text-center text-sm text-muted-foreground mt-4">Swipe or use arrows to see all plans</p>
+          <div className="text-center mt-4">
+            <p className="text-sm text-muted-foreground">👆 Swipe or use arrows to see all plans</p>
+            <div className="flex items-center justify-center gap-2 mt-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <div className="w-2 h-2 bg-primary/30 rounded-full animate-pulse" />
+                <span>Swipe left/right</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <motion.div
