@@ -25,8 +25,7 @@
     "react-three": "^0.9.7",
     "react-type-animation": "^3.2.0",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss-animate": "^1.0.7",
-    "three": "^0.177.0"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@types/node": "^20",
