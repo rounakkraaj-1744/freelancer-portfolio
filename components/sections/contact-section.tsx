@@ -202,8 +202,8 @@ export default function ContactSection() {
 
             <div className="space-y-8">
               {[
-                { icon: Mail, title: "Email", value: "Rounakk@example.com", color: "text-blue-500" },
-                { icon: Phone, title: "Phone", value: "+91 98765 43210", color: "text-green-500" },
+                { icon: Mail, title: "Email", value: "contact@rounakk.in", color: "text-blue-500" },
+                { icon: Phone, title: "Phone", value: "+91 68035 99490", color: "text-green-500" },
                 { icon: MapPin, title: "Location", value: "India (Remote Available)", color: "text-purple-500" },
               ].map((item, index) => (
                 <motion.div key={item.title} initial={{ opacity: 0, y: 20 }} animate={isInView ? { opacity: 1, y: 0 } : {}}
